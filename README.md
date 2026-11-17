@@ -6,6 +6,10 @@ Welch 实验检验的真实业务分析小型项目。完整模拟客户、痛�
 数据接入（JSON/CSV、字段验证、批次指纹）→ 参数化分析（异步 Python worker）→ 结果复核（指标、图形、明细、解释、批准）→ 定时分发（本地收件箱、CSV/JSON、SHA256）；另有业务总览和审计轨迹。
 三个贯穿全栈的实体：Dataset 数据批次、Job 分析任务、Report 分发计划；辅助 User、Audit、Delivery。
 
+### 电量对账与封账（新增）
+两路数据——电表累计读数、片段起止时间——乱序到达、各自带确认水位。后端 `src/services/energy_engine.py` 为纯标准库 Decimal 引擎，按区间与片段的重叠时长比例分摊耗电，尾差校正保证 `片段分摊 + 未归属 = 表计增量`；换表回零、读数缺口、同时间戳、片段交叠/零时长一律隔离待核对。`src/services/energy.py` 负责双水位封账（行锁+条件更新，并发不漏计、封账幂等）、封账后修订账（更正幂等暂存、断点游标恢复、重试不重复）、固定简报（SHA256）与封账门控的关联分析批准。页面「电量封账」提供待对齐/异常/已封账/修订差异四视图。原账与已发简报始终冻结保留。
+引擎单测：`cd backend && python test_energy_engine.py`；端到端集成测试（隔离 SQLite，自备依赖路径）：`python test_energy_integration.py`。业务口径见 [BUSINESS.md](BUSINESS.md) 的「电量对账与封账」。
+
 ## 快速启动
 ```bash
 cp .env.example .env
